@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import os
+import re
 
 
 # log_format ui_short '$remote_addr  $remote_user $http_x_real_ip [$time_local] "$request" '
@@ -13,9 +15,25 @@ config = {
     "LOG_DIR": "./log"
 }
 
+# examples:
+# nginx-access-ui.log-20170630.gz
+# nginx-access-ui.log-20170630
+FILENAME_RE = re.compile(
+    r'^nginx-access-ui.log-'
+    r'\d{8}'              # yyyyddmm
+    r'(\.\S+)?$'          # optional extension
+)
+
+
 
 def find_latest_log(logdir):
-    pass
+    filenames = os.listdir(logdir)
+    log_filenames = [f for f in filenames if FILENAME_RE.match(f)]
+    if not log_filenames:
+        return
+
+    log_filenames.sort()
+    return log_filenames[-1]
 
 
 def parse_logfile(logfile):

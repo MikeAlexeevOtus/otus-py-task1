@@ -18,8 +18,15 @@ finder_test_params = [
     ),
     (
         'several logs, plain and .gz',
-        ['nginx-access-ui.log-20170630.gz'],
-        'nginx-access-ui.log-20170630.gz'
+        [
+            'nginx-access-ui.log-20170631',
+            'nginx-access-ui.log-20181226.gz',
+            'nginx-access-ui.log',
+            'nginx-access-ui.log-20170630.gz',
+            'nginx.log-20190630.gz',
+            'not-a-log',
+        ],
+        'nginx-access-ui.log-20181226.gz'
     )
 ]
 
@@ -34,7 +41,6 @@ class TestFindLatestLog(unittest.TestCase):
 
     def _prepare_testdir(self, filenames):
         testdir = tempfile.mkdtemp()
-        print(testdir)
         self.testdirs.append(testdir)
         for filename in filenames:
             filepath = os.path.join(testdir, filename)
@@ -42,7 +48,7 @@ class TestFindLatestLog(unittest.TestCase):
 
         return testdir
 
-    def test_finder(self):
+    def test_find_latest_log(self):
         for test_name, files_list, result in finder_test_params:
             with self.subTest(test_name=test_name):
                 testdir = self._prepare_testdir(files_list)
