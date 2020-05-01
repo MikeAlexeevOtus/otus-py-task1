@@ -25,7 +25,6 @@ FILENAME_RE = re.compile(
 )
 
 
-
 def find_latest_log(logdir):
     filenames = os.listdir(logdir)
     log_filenames = [f for f in filenames if FILENAME_RE.match(f)]
