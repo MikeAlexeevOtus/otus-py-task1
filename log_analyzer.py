@@ -99,8 +99,9 @@ def parse_logfile(log_filepath, errors_threshold):
                 continue
             yield parse_result
 
-    if errors_count / total_lines > errors_threshold:
-        raise RuntimeError('too many errors')
+    errors_ratio = errors_count / total_lines
+    if errors_ratio > errors_threshold:
+        raise RuntimeError(f'too many errors, errors ratio: {errors_ratio}'))
 
 
 def render_report(template_filepath, output_filepath, stat_entries, limit):
