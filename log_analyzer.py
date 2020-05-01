@@ -4,6 +4,7 @@ from collections import defaultdict, namedtuple
 from string import Template
 import argparse
 import copy
+import datetime
 import json
 import gzip
 import os
@@ -29,8 +30,8 @@ CONFIG = {
 # nginx-access-ui.log-20170630
 FILENAME_RE = re.compile(
     r'^nginx-access-ui.log-'
-    r'\d{8}'              # yyyyddmm
-    r'(\.gz)?$'           # optional .gz extension
+    r'(\d{8})'              # yyyyddmm
+    r'(?:\.gz)?$'           # optional .gz extension
 )
 
 LOGLINE_RE = re.compile(
@@ -53,13 +54,21 @@ TEMPLATE_FILEPATH = os.path.join(
 
 
 def find_latest_log(logdir):
-    filenames = os.listdir(logdir)
-    log_filenames = [f for f in filenames if FILENAME_RE.match(f)]
-    if not log_filenames:
-        return
+    latest_log = None
+    latest_date = None
 
-    log_filenames.sort()
-    return log_filenames[-1]
+    for filename in os.listdir(logdir):
+        match = FILENAME_RE.match(filename)
+        if not match:
+            continue
+
+        date_str = match.group(1)
+        date = datetime.datetime.strptime(date_str, '%Y%m%d').date()
+        if not latest_date or date > latest_date:
+            latest_date = date
+            latest_log = filename
+
+    return latest_log, latest_date
 
 
 def parse_one_line(line):
@@ -142,7 +151,7 @@ def calculate_events_stat(events):
 
 def load_config(config_filepath):
     """validate and load config"""
-    if not os.path.exists(config_filepath):
+    if not config_filepath.exists():
         raise RuntimeError(f'config file "{config_filepath}" doesn\'t exist')
 
     with open(config_filepath) as f:
@@ -150,6 +159,11 @@ def load_config(config_filepath):
             return json.load(f)
         except ValueError:
             raise RuntimeError(f'config file "{config_filepath}" is not a valid json file')
+
+
+def make_output_report_path(report_dir, date):
+    filename = 'report-{}.html'.format(date.strftime('%Y.%m.%d'))
+    return os.path.join(report_dir, filename)
 
 
 def main(base_config):
@@ -164,11 +178,15 @@ def main(base_config):
         config.update(load_config(args.config))
 
     logdir = config['LOG_DIR']
-    latest_logfile = find_latest_log(logdir)
+    latest_logfile, date = find_latest_log(logdir)
+    output_filepath = make_output_report_path(config['REPORT_DIR'], date)
+    if os.path.exists(output_filepath):
+        return
+
+    os.makedirs(config['REPORT_DIR'], exist_ok=True)
     events = parse_logfile(os.path.join(logdir, latest_logfile),
                            config['ERRORS_THRESHOLD'])
     stat_entries = calculate_events_stat(events)
-    output_filepath = 'result-report.html'
     render_report(TEMPLATE_FILEPATH, output_filepath, stat_entries, config['REPORT_SIZE'])
 
 

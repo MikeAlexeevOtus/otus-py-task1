@@ -2,6 +2,7 @@ import tempfile
 import shutil
 import os
 import unittest
+import datetime
 
 import log_analyzer
 
@@ -9,17 +10,17 @@ import log_analyzer
 finder_test_params = [
     # testname  |  files in dir  |  found log
     (
-        'empty dir', [], None
+        'empty dir', [], (None, None)
     ),
     (
         'other files, no logs',
         ['other_file1', 'other_file2'],
-        None
+        (None, None)
     ),
     (
         'several logs, plain and .gz',
         [
-            'nginx-access-ui.log-20170631',
+            'nginx-access-ui.log-20170630',
             'nginx-access-ui.log-20181226.gz',
             'nginx-access-ui.log',
             'nginx-access-ui.log-20170630.gz',
@@ -27,7 +28,7 @@ finder_test_params = [
             'not-a-log',
             'nginx-access-ui.log-20200630.bz2',
         ],
-        'nginx-access-ui.log-20181226.gz'
+        ('nginx-access-ui.log-20181226.gz', datetime.date(2018, 12, 26))
     )
 ]
 
