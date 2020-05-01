@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os
-import re
-import gzip
 from collections import defaultdict, namedtuple
-import statistics
-import argparse
 from string import Template
+import argparse
+import copy
+import json
+import gzip
+import os
+import pathlib
+import re
+import statistics
 
 
 # log_format ui_short '$remote_addr  $remote_user $http_x_real_ip [$time_local] "$request" '
@@ -14,10 +17,11 @@ from string import Template
 #                     '"$http_user_agent" "$http_x_forwarded_for" "$http_X_REQUEST_ID" "$http_X_RB_USER" '
 #                     '$request_time';
 
-config = {
+CONFIG = {
     "REPORT_SIZE": 1000,
     "REPORT_DIR": "./reports",
-    "LOG_DIR": "./log"
+    "LOG_DIR": "./log",
+    "ERRORS_THRESHOLD": 0.1
 }
 
 # examples:
@@ -33,12 +37,18 @@ LOGLINE_RE = re.compile(
     r'^.*?'
     r'"\S+ (\S+) HTTP/.+"'     # take url from request section, e.g. "GET /api/v2/banner/1717161 HTTP/1.1"
     r'.*'
-    r'(\d+(?:\.\d+))$'         # duration
+    r'(\d+(?:\.\d+))$'         # duration, integer or float
 )
 
 StatEntry = namedtuple(
     'StatEntry',
     'url count count_perc time_sum time_perc time_avg time_max time_med'
+)
+
+
+TEMPLATE_FILEPATH = os.path.join(
+    os.path.dirname(__file__),
+    'report.html'
 )
 
 
@@ -91,6 +101,7 @@ def render_report(template_filepath, output_filepath, stat_entries, limit):
     with open(template_filepath, encoding='utf-8') as template_file:
         template_data = template_file.read()
     template = Template(template_data)
+
     with open(output_filepath, 'w', encoding='utf-8') as output_file:
         output_file.write(
             template.safe_substitute({'table_json': table_json})
@@ -131,18 +142,35 @@ def calculate_events_stat(events):
 
 def load_config(config_filepath):
     """validate and load config"""
-    pass
+    if not os.path.exists(config_filepath):
+        raise RuntimeError(f'config file "{config_filepath}" doesn\'t exist')
+
+    with open(config_filepath) as f:
+        try:
+            return json.load(f)
+        except ValueError:
+            raise RuntimeError(f'config file "{config_filepath}" is not a valid json file')
 
 
-def main():
-    # argparse, validate and merge configs
+def main(base_config):
+    config = copy.deepcopy(base_config)
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument(
+        '--config', '-c', required=False, type=pathlib.Path,
+        help='Path to config json file'
+    )
+    args = arg_parser.parse_args()
+    if args.config:
+        config.update(load_config(args.config))
+
+    logdir = config['LOG_DIR']
     latest_logfile = find_latest_log(logdir)
-    # log logfile
-    events, errors_percent = parse_logfile(latest_logfile)
-    stat = calculate_events_stat(events)
-    # limit events
-    render_report(template_filepath, output_filepath, stat)
+    events = parse_logfile(os.path.join(logdir, latest_logfile),
+                           config['ERRORS_THRESHOLD'])
+    stat_entries = calculate_events_stat(events)
+    output_filepath = 'result-report.html'
+    render_report(TEMPLATE_FILEPATH, output_filepath, stat_entries, config['REPORT_SIZE'])
 
 
 if __name__ == "__main__":
-    main()
+    main(CONFIG)
