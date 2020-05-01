@@ -7,10 +7,12 @@ import copy
 import datetime
 import json
 import gzip
+import logging
 import os
 import pathlib
 import re
 import statistics
+import sys
 
 
 # log_format ui_short '$remote_addr  $remote_user $http_x_real_ip [$time_local] "$request" '
@@ -22,7 +24,7 @@ CONFIG = {
     "REPORT_SIZE": 1000,
     "REPORT_DIR": "./reports",
     "LOG_DIR": "./log",
-    "ERRORS_THRESHOLD": 0.1
+    "ERRORS_THRESHOLD": 0.1,
 }
 
 # examples:
@@ -177,18 +179,42 @@ def main(base_config):
     if args.config:
         config.update(load_config(args.config))
 
+    logging.basicConfig(
+        filename=config.get('LOG'),
+        format='[%(asctime)s] %(levelname).1s %(message)s',
+        datefmt='%Y.%m.%d %H:%M:%S',
+        level=logging.DEBUG if config.get('DEBUG') else logging.INFO
+    )
+
+    logging.debug('using config: %s', config)
     logdir = config['LOG_DIR']
+    if not os.path.exists(logdir):
+        raise RuntimeError(f'logdir "{logdir}" doesn\'t exist')
+
     latest_logfile, date = find_latest_log(logdir)
-    output_filepath = make_output_report_path(config['REPORT_DIR'], date)
-    if os.path.exists(output_filepath):
+    if not latest_logfile:
+        logging.error('not found log for processing')
         return
 
+    logging.info('found latest log for processing: %s', latest_logfile)
+
+    output_filepath = make_output_report_path(config['REPORT_DIR'], date)
+    if os.path.exists(output_filepath):
+        logging.info('report %s already exists, skip processing', output_filepath)
+        return
+
+    logging.info('writing report to %s', output_filepath)
     os.makedirs(config['REPORT_DIR'], exist_ok=True)
     events = parse_logfile(os.path.join(logdir, latest_logfile),
                            config['ERRORS_THRESHOLD'])
     stat_entries = calculate_events_stat(events)
     render_report(TEMPLATE_FILEPATH, output_filepath, stat_entries, config['REPORT_SIZE'])
+    logging.info('processing done')
 
 
 if __name__ == "__main__":
-    main(CONFIG)
+    try:
+        main(CONFIG)
+    except Exception:
+        logging.exception('failed to process log')
+        sys.exit(1)
