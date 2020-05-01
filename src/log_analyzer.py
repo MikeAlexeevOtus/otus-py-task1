@@ -14,8 +14,37 @@ config = {
 }
 
 
-def main():
+def find_latest_log(logdir):
     pass
+
+
+def parse_logfile(logfile):
+    """return list of pairs (url, request time) and percent of not parsed lines"""
+    pass
+
+
+def render_report(template_filepath, output_filepath, stat):
+    pass
+
+
+def calculate_events_stat(events):
+    pass
+
+
+def load_config(config_filepath):
+    """validate and load config"""
+    pass
+
+
+def main():
+    # argparse, validate and merge configs
+    latest_logfile = find_latest_log(logdir)
+    # log logfile
+    events, errors_percent = parse_logfile(latest_logfile)
+    stat = calculate_events_stat(events)
+    # limit events
+    render_report(template_filepath, output_filepath, stat)
+
 
 if __name__ == "__main__":
     main()
