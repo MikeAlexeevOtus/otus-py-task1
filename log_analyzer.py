@@ -101,7 +101,7 @@ def parse_logfile(log_filepath, errors_threshold):
 
     errors_ratio = errors_count / total_lines
     if errors_ratio > errors_threshold:
-        raise RuntimeError(f'too many errors, errors ratio: {errors_ratio}'))
+        raise RuntimeError(f'too many errors, errors ratio: {errors_ratio}')
 
 
 def render_report(template_filepath, output_filepath, stat_entries, limit):
@@ -121,8 +121,10 @@ def render_report(template_filepath, output_filepath, stat_entries, limit):
 
 
 def calculate_events_stat(events):
+    precision = 3
     total_duration = 0
     total_count = 0
+
     url_durations = defaultdict(list)
     for url, duration in events:
         total_count += 1
@@ -139,12 +141,12 @@ def calculate_events_stat(events):
         stat_entry = StatEntry(
             url=url,
             count=count,
-            count_perc=count / total_count,
-            time_sum=time_sum,
-            time_perc=time_sum / total_duration,
-            time_avg=time_sum / count,
+            count_perc=round((count / total_count) * 100, precision),
+            time_sum=round(time_sum, precision),
+            time_perc=round((time_sum / total_duration) * 100, precision),
+            time_avg=round(time_sum / count, precision),
             time_max=time_max,
-            time_med=statistics.median(durations) if durations else 0
+            time_med=round(statistics.median(durations) if durations else 0, precision)
         )
 
         stat_entries.append(stat_entry)
@@ -216,6 +218,6 @@ def main(base_config):
 if __name__ == "__main__":
     try:
         main(CONFIG)
-    except Exception:
+    except:
         logging.exception('failed to process log')
         sys.exit(1)
